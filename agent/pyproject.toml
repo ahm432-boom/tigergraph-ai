@@ -1,0 +1,18 @@
+[project]
+name = "agentic-fraud-investigation"
+version = "0.1.0"
+description = "Agentic Fraud Investigation using LangGraph and TigerGraph MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=0.1.0",
+    "langgraph>=0.0.26",
+    "langchain-openai>=0.1.0",
+    "tigergraph-mcp>=0.1.0",
+    "pydantic>=2.0.0",
+    "pandas>=2.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

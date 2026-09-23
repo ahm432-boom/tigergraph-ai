@@ -1,0 +1,60 @@
+USE GRAPH FraudInvestigation
+
+// Drop existing queries if needed
+DROP QUERY get_txn_context
+DROP QUERY get_customer_history
+
+// Query 1: Get Transaction Context
+CREATE QUERY get_txn_context(STRING txn_id) FOR GRAPH FraudInvestigation {
+  /*
+   * Starts from a specific transaction and gathers its 1-hop neighborhood:
+   * - The Card that made it
+   * - The Customer who owns the Card
+   * - The Device Profile used (if online)
+   * - The Billing Region
+   * - The Email Domain
+  */
+  Start (ANY) = {Transaction.*};
+  
+  // Find the target transaction
+  Txn = SELECT t FROM Start:t WHERE t.txn_id == txn_id;
+  
+  // Find related entities
+  Cards = SELECT c FROM Txn:t -(REVERSE_MADE:e)-> Card:c;
+  Customers = SELECT cu FROM Cards:c -(REVERSE_OWNS:e)-> Customer:cu;
+  
+  Devices = SELECT d FROM Txn:t -(FROM_DEVICE:e)-> DeviceProfile:d;
+  Regions = SELECT r FROM Txn:t -(BILLED_IN:e)-> BillingRegion:r;
+  Emails = SELECT em FROM Txn:t -(PURCHASER_EMAIL:e)-> EmailDomain:em;
+  
+  PRINT Txn;
+  PRINT Cards;
+  PRINT Customers;
+  PRINT Devices;
+  PRINT Regions;
+  PRINT Emails;
+}
+
+// Query 2: Get Customer History
+CREATE QUERY get_customer_history(STRING customer_id, INT limit_txns = 50) FOR GRAPH FraudInvestigation {
+  /*
+   * Gets the recent transaction history for a customer across all their cards.
+   */
+  Start = {Customer.*};
+  
+  Cust = SELECT c FROM Start:c WHERE c.customer_id == customer_id;
+  
+  Cards = SELECT ca FROM Cust:c -(OWNS:e)-> Card:ca;
+  
+  Txns = SELECT t FROM Cards:c -(MADE:e)-> Transaction:t
+         ORDER BY t.ts DESC
+         LIMIT limit_txns;
+         
+  PRINT Cust;
+  PRINT Cards;
+  PRINT Txns;
+}
+
+// Install queries to create REST endpoints
+INSTALL QUERY get_txn_context
+INSTALL QUERY get_customer_history

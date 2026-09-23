@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  tigergraph:
+    image: docker.io/tigergraph/tigergraph:latest
+    container_name: tigergraph
+    ports:
+      - "9000:9000" # RESTPP Server
+      - "14240:14240" # GraphStudio UI
+      - "14282:14282" # GSQL Server
+      - "14283:14283" # GSQL Client
+      - "6144:6144" # Kafka
+    volumes:
+      - tg_data:/home/tigergraph/mydata
+      # Map the backend directory into the container so we can easily run the scripts
+      - ./tg_backend:/home/tigergraph/tg_backend
+      # Map the data directory into the container so we can load the CSVs
+      - ./data:/home/tigergraph/data
+    ulimits:
+      nofile:
+        soft: 1000000
+        hard: 1000000
+    deploy:
+      resources:
+        limits:
+          memory: 8G # TigerGraph requires a decent amount of memory
+
+volumes:
+  tg_data:

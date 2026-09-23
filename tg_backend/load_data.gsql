@@ -1,0 +1,48 @@
+USE GRAPH FraudInvestigation
+
+// Drop existing jobs if they exist
+DROP JOB load_transactions
+DROP JOB load_identity
+DROP JOB load_closed_cases
+
+// Job to load transactions
+CREATE LOADING JOB load_transactions FOR GRAPH FraudInvestigation {
+    // Assuming CSV with header: TransactionID, TransactionDT, TransactionAmt, ProductCD, card1, card2, card3, card4, card5, card6, addr1, addr2, P_emaildomain, R_emaildomain, customer_id, ts, channel, risk_score
+    DEFINE FILENAME f1 = "./data/transactions.csv";
+    
+    // Map data to vertices
+    LOAD f1 TO VERTEX Transaction VALUES($0, $15, $2, $16, $17, $3) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f1 TO VERTEX Customer VALUES($14) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    
+    // Create compound card_id if necessary, or assuming card1 is primary card_id. For hackathon we use card1.
+    LOAD f1 TO VERTEX Card VALUES($4, $7, $9) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    
+    LOAD f1 TO VERTEX BillingRegion VALUES($10) WHERE $10 != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f1 TO VERTEX EmailDomain VALUES($12) WHERE $12 != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    
+    // Map data to edges
+    LOAD f1 TO EDGE OWNS VALUES($14, $4) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f1 TO EDGE MADE VALUES($4, $0, $15) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f1 TO EDGE BILLED_IN VALUES($0, $10) WHERE $10 != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f1 TO EDGE PURCHASER_EMAIL VALUES($0, $12) WHERE $12 != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+}
+
+// Job to load identity (device info)
+CREATE LOADING JOB load_identity FOR GRAPH FraudInvestigation {
+    // Assuming CSV with header: TransactionID, id_01,...,id_30(OS),id_31(Browser),...,id_33(Screen),DeviceType,DeviceInfo
+    DEFINE FILENAME f2 = "./data/identity.csv";
+    
+    // For simplicity, we create a device profile using DeviceInfo as primary key, or a hash.
+    // Assuming we have a derived 'device_id' column or we use 'DeviceInfo' if unique enough.
+    LOAD f2 TO VERTEX DeviceProfile VALUES($"DeviceInfo", $"DeviceType", $"id_30", $"id_31", $"id_33") WHERE $"DeviceInfo" != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f2 TO EDGE FROM_DEVICE VALUES($"TransactionID", $"DeviceInfo") WHERE $"DeviceInfo" != "" USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+}
+
+// Job to load closed cases
+CREATE LOADING JOB load_closed_cases FOR GRAPH FraudInvestigation {
+    // Assuming CSV: case_id, customer_id, card_id, outcome, pattern, exposure_usd, narrative
+    DEFINE FILENAME f3 = "./data/closed_cases_history.csv";
+    
+    LOAD f3 TO VERTEX ClosedCase VALUES($0, $3, $4, $5, $6) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+    LOAD f3 TO EDGE CONNECTED_TO_CARD VALUES($0, $2) USING SEPARATOR=",", HEADER="true", QUOTE="\"";
+}

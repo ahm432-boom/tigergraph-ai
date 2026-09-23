@@ -1,0 +1,24 @@
+{
+  "case_id": "CASE-102",
+  "evidence_requests": [],
+  "stop_reason": "ACTION_TAKEN",
+  "latency_s": 2.384185791015625e-07,
+  "case": {
+    "status": "CLOSED",
+    "verdict": "FRAUD",
+    "fraud_prob": 0.85,
+    "exposure": 500
+  },
+  "sar": {
+    "file": false
+  },
+  "next_best_actions": {
+    "initial": [],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1_APPROVAL"
+      }
+    ]
+  }
+}
